@@ -27,4 +27,4 @@ jobs:
           (cd dist && sha256sum * > SHA256SUMS.txt)
       - name: Release
         env: { GH_TOKEN: "${{ github.token }}" }
-        run: gh release create "$GITHUB_REF_bnbloc-local-skills" dist/* --title "bnbloc-local-skills $GITHUB_REF_bnbloc-local-skills" --generate-notes
+        run: gh release create "$GITHUB_REF_NAME" dist/* --title "bnbloc-local-skills $GITHUB_REF_NAME" --generate-notes
