@@ -6,7 +6,8 @@ An installable plugin sidecar (`bnbloc.plugin.package/v1`, capabilities
 `skills-provider` and `sandbox-mounts`). The member chooses, skill by skill
 in Settings → Skills, which skill folders on their computer reach their
 agents' sandbox and which are added to their library. Off, and empty, until
-they turn it on.
+they turn it on. macOS desktops only for now: the sandbox's guest backend is
+macOS-only.
 
 It speaks two contracts: `bnbloc.skills.provider/v1` (what Settings renders,
 over loopback with a per-launch bearer) and `bnbloc.sandbox.mounts/v1` (the
@@ -23,7 +24,7 @@ below), then as a bnbloc super-admin:
 ```sh
 bnbloc components publish-package --gateway https://<gateway> --package package.json \
   --binary darwin-arm64=dist/bnbloc-local-skills-darwin-arm64 --binary darwin-amd64=dist/bnbloc-local-skills-darwin-amd64 \
-  --binary windows-amd64=dist/bnbloc-local-skills-windows-amd64.exe --rollout optin
+  --rollout optin
 ```
 
 Members who opt in (or everyone, with `--rollout auto`) get it in their
