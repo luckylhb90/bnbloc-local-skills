@@ -2,12 +2,11 @@ package localskills
 
 import (
 	"crypto/subtle"
+	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http"
 	"strings"
-
-	"github.com/luckylhb90/bnbloc/internal/httpx"
-	"github.com/luckylhb90/bnbloc/internal/obs"
 )
 
 // maxSettingsBody bounds a settings update.
@@ -26,28 +25,28 @@ func (s *Service) Handler(token string) http.Handler {
 	mux.HandleFunc("GET /v1/state", func(w http.ResponseWriter, r *http.Request) {
 		st, err := s.State()
 		if err != nil {
-			obs.ServerError(w, "read the skills", err)
-			httpx.Error(w, "could not read the skills: "+err.Error(), http.StatusInternalServerError)
+			slog.Error("server error", "what", "read the skills", "error", err.Error())
+			writeError(w, "could not read the skills: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
-		httpx.WriteJSON(w, http.StatusOK, st)
+		writeJSON(w, http.StatusOK, st)
 	})
 	mux.HandleFunc("PUT /v1/settings", func(w http.ResponseWriter, r *http.Request) {
 		var in Settings
-		if !httpx.DecodeJSON(w, r, maxSettingsBody, &in) {
+		if !decodeJSON(w, r, maxSettingsBody, &in) {
 			return
 		}
 		st, err := s.Apply(in)
 		if err != nil {
-			httpx.Error(w, err.Error(), http.StatusBadRequest)
+			writeError(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-		httpx.WriteJSON(w, http.StatusOK, st)
+		writeJSON(w, http.StatusOK, st)
 	})
 	mux.HandleFunc("POST /v1/pack", func(w http.ResponseWriter, r *http.Request) {
 		archive, hash, err := s.Pack(r.URL.Query().Get("name"))
 		if err != nil {
-			httpx.Error(w, err.Error(), http.StatusUnprocessableEntity)
+			writeError(w, err.Error(), http.StatusUnprocessableEntity)
 			return
 		}
 		w.Header().Set("Content-Type", "application/x-tar")
@@ -64,9 +63,42 @@ func requireBearer(token string, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		got := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
 		if subtle.ConstantTimeCompare([]byte(got), []byte(token)) != 1 {
-			httpx.Error(w, errors.New("unauthorized").Error(), http.StatusUnauthorized)
+			writeError(w, errors.New("unauthorized").Error(), http.StatusUnauthorized)
 			return
 		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+// writeJSON answers status with v as JSON (messages keep <, > and &
+// readable: a JSON answer is never embedded in HTML).
+func writeJSON(w http.ResponseWriter, status int, v any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	enc := json.NewEncoder(w)
+	enc.SetEscapeHTML(false)
+	_ = enc.Encode(v)
+}
+
+// writeError answers status with the error body the desktop reads
+// ({"error": msg}).
+func writeError(w http.ResponseWriter, msg string, status int) {
+	writeJSON(w, status, map[string]string{"error": msg})
+}
+
+// decodeJSON reads a JSON body of at most limit bytes into v, answering 413
+// or 400 itself when it cannot.
+func decodeJSON(w http.ResponseWriter, r *http.Request, limit int64, v any) bool {
+	r.Body = http.MaxBytesReader(w, r.Body, limit)
+	err := json.NewDecoder(r.Body).Decode(v)
+	if err == nil {
+		return true
+	}
+	var tooLarge *http.MaxBytesError
+	if errors.As(err, &tooLarge) {
+		writeError(w, "request body too large", http.StatusRequestEntityTooLarge)
+		return false
+	}
+	writeError(w, "invalid json body", http.StatusBadRequest)
+	return false
 }

@@ -1,6 +1,8 @@
 package localskills
 
 import (
+	"archive/tar"
+	"bytes"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -9,8 +11,6 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-
-	"github.com/luckylhb90/bnbloc/internal/tarbundle"
 )
 
 func newService(t *testing.T) (*Service, string) {
@@ -163,7 +163,7 @@ func TestServicePackFiltersAndRefuses(t *testing.T) {
 	if err != nil || hash == "" {
 		t.Fatalf("pack: %v", err)
 	}
-	got, err := tarbundle.ReadArchive(archive, tarbundle.ContentLimits)
+	got, err := readTar(archive)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -349,5 +349,25 @@ func TestCredentialPlaceholdersAndAllowances(t *testing.T) {
 	}
 	if _, err := s.Apply(Settings{Skills: map[string]Choice{"x": {Allowed: []AllowedFile{{File: "../up", Hash: strings.Repeat("a", 64)}}}}}); err == nil {
 		t.Error("an allowance outside the skill is refused")
+	}
+}
+
+// readTar reads a ustar archive's regular files.
+func readTar(raw []byte) (map[string][]byte, error) {
+	out := map[string][]byte{}
+	tr := tar.NewReader(bytes.NewReader(raw))
+	for {
+		h, err := tr.Next()
+		if err == io.EOF {
+			return out, nil
+		}
+		if err != nil {
+			return nil, err
+		}
+		data, err := io.ReadAll(tr)
+		if err != nil {
+			return nil, err
+		}
+		out[h.Name] = data
 	}
 }

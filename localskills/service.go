@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/luckylhb90/bnbloc/core"
-	"github.com/luckylhb90/bnbloc/internal/digest"
 )
 
 // ProviderContract names the API a Settings view renders and a component
@@ -228,7 +227,7 @@ func (s *Service) Validate(in Settings) error {
 			return fmt.Errorf("the skill %s allows more than %d files", name, maxAllowed)
 		}
 		for _, a := range c.Allowed {
-			if clean, ok := core.CleanRelPath(a.File); !ok || clean != a.File || !digest.Valid(a.Hash) {
+			if clean, ok := core.CleanRelPath(a.File); !ok || clean != a.File || !validHash(a.Hash) {
 				return fmt.Errorf("%q is not an allowable file of %s", a.File, name)
 			}
 		}
@@ -376,4 +375,17 @@ func (s *Service) Run(interval time.Duration, stop <-chan struct{}, onError func
 		case <-t.C:
 		}
 	}
+}
+
+// validHash reports a lower-case hex sha256, what fileHash writes.
+func validHash(s string) bool {
+	if len(s) != 64 {
+		return false
+	}
+	for i := 0; i < len(s); i++ {
+		if c := s[i]; !('0' <= c && c <= '9' || 'a' <= c && c <= 'f') {
+			return false
+		}
+	}
+	return true
 }

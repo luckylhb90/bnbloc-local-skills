@@ -16,9 +16,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/luckylhb90/bnbloc/component"
 	"github.com/luckylhb90/bnbloc/core"
-	"github.com/luckylhb90/bnbloc/internal/contentpkg"
-	"github.com/luckylhb90/bnbloc/internal/tarbundle"
 )
 
 // maxSkillMD bounds the SKILL.md read for its frontmatter.
@@ -314,7 +313,7 @@ func (s *Scanner) Inspect(source, dir string) Skill {
 	if len(raw) > maxSkillMD {
 		raw = raw[:maxSkillMD]
 	}
-	fm, _ := contentpkg.ParseFrontmatter(string(raw))
+	fm, _ := component.ParseFrontmatter(string(raw))
 	if n := strings.TrimSpace(fm["name"]); n != "" {
 		sk.Name = n
 	}
@@ -328,7 +327,7 @@ func (s *Scanner) Inspect(source, dir string) Skill {
 		}
 	}
 	switch {
-	case !contentpkg.ValidName(sk.Name):
+	case !component.ValidName(sk.Name):
 		sk.Reason = fmt.Sprintf("the name %q is not lower-case letters, digits and hyphens", sk.Name)
 	case sk.Description == "":
 		sk.Reason = "SKILL.md has no description"
@@ -349,16 +348,16 @@ func (s *Scanner) Inspect(source, dir string) Skill {
 			break
 		}
 	}
-	// The library takes a skill within its own bundle limits (tarbundle's):
+	// The library takes a skill within its own bundle limits (the content caps):
 	// the sandbox takes more (the policy's), so a big skill is still usable
 	// there and only cannot be published. The hash serves "changed since
 	// published", so only a publishable skill is hashed (a big one is not read
 	// whole every time it is scanned).
 	switch {
-	case sk.Files > tarbundle.ContentLimits.MaxFiles:
-		sk.PublishProblem = fmt.Sprintf("too many files for the library (%d, at most %d)", sk.Files, tarbundle.ContentLimits.MaxFiles)
-	case sk.Bytes > int64(tarbundle.ContentLimits.MaxBytes):
-		sk.PublishProblem = fmt.Sprintf("too large for the library (%s, at most %d MiB)", formatMiB(sk.Bytes), tarbundle.ContentLimits.MaxBytes>>20)
+	case sk.Files > component.ContentMaxFiles:
+		sk.PublishProblem = fmt.Sprintf("too many files for the library (%d, at most %d)", sk.Files, component.ContentMaxFiles)
+	case sk.Bytes > int64(component.ContentMaxBytes):
+		sk.PublishProblem = fmt.Sprintf("too large for the library (%s, at most %d MiB)", formatMiB(sk.Bytes), component.ContentMaxBytes>>20)
 	}
 	if len(sk.Allowed) > 0 && sk.PublishProblem == "" {
 		sk.PublishProblem = fmt.Sprintf("%s was allowed for your sandbox only; it is not shared with the library", sk.Allowed[0])

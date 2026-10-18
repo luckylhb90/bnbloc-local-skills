@@ -36,8 +36,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/luckylhb90/bnbloc/internal/config"
-	"github.com/luckylhb90/bnbloc/internal/localskills"
+	"github.com/luckylhb90/bnbloc-local-skills/localskills"
 )
 
 // Env names; the package manifest (packages/local-skills) declares the same.
@@ -61,15 +60,15 @@ func main() {
 }
 
 func run() error {
-	listen, err := listenAddr(config.FromEnvRaw(envListen))
+	listen, err := listenAddr(os.Getenv(envListen))
 	if err != nil {
 		return err
 	}
-	token := config.FromEnvRaw(envToken)
+	token := os.Getenv(envToken)
 	if token == "" {
 		return fmt.Errorf("%s is not set: this bnbloc desktop is too old to start a skills component (it hands plugins no bearer); update the app", envToken)
 	}
-	dataDir := config.FromEnvRaw(envDataDir)
+	dataDir := os.Getenv(envDataDir)
 	if dataDir == "" {
 		return fmt.Errorf("%s is not set: this bnbloc desktop is too old to start a skills component; update the app", envDataDir)
 	}
@@ -80,13 +79,13 @@ func run() error {
 	svc := &localskills.Service{
 		Home:         home,
 		SettingsFile: filepath.Join(dataDir, settingsName),
-		MountsFile:   config.FromEnvRaw(envMounts),
-		MirrorRoot:   config.FromEnvRaw(envMountRoot),
+		MountsFile:   os.Getenv(envMounts),
+		MirrorRoot:   os.Getenv(envMountRoot),
 	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
-	if config.FromEnvRaw(envSupervised) != "" {
+	if os.Getenv(envSupervised) != "" {
 		go func() {
 			_, _ = io.Copy(io.Discard, os.Stdin)
 			stop() // the desktop is gone: shut down
