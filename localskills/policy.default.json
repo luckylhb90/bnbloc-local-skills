@@ -6,7 +6,8 @@
     "~/.config/opencode/skills",
     "~/.config/opencode/skill",
     "~/.gemini/skills",
-    "~/.cursor/skills"
+    "~/.cursor/skills",
+    "~/.codebuddy/skills"
   ],
   "suggestedSources": ["~/.agents/skills"],
   "exclude": [".git", "node_modules", "__pycache__", ".venv", ".DS_Store", "*.pyc"],
