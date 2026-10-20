@@ -9,6 +9,13 @@ their computer reach their agents' sandbox and which are added to their
 library. Off, and empty, until they turn it on. macOS desktops only for now:
 the sandbox's guest backend is macOS-only.
 
+Adding a skill to the library goes through a publish step in the panel: the
+member sees the files and sets the library entry (name, display name,
+description, tags), and may first have it reviewed with AI (bnbloc's
+`review-skill` assist reads SKILL.md and the file list, says what to fix,
+such as a secret or a personal path left in, and proposes the entry, applied
+field by field). Publishing stays the member's decision.
+
 It speaks two contracts: `bnbloc.skills.provider/v1` (the skills panel bnbloc
 renders, over loopback with a per-launch bearer) and `bnbloc.sandbox.mounts/v1` (the
 descriptor the bridge reads before a sandboxed turn; the types are bnbloc's

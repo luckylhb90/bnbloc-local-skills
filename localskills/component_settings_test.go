@@ -52,12 +52,6 @@ func TestLoadPolicyMergesTheSettingsFile(t *testing.T) {
 					t.Errorf("notes = %v", notes)
 				}
 			}},
-		{name: "a lines value as one string reads alike", file: `{"excludes": " *.log \n\n build "}`,
-			check: func(t *testing.T, p Policy, _ []string) {
-				if !slices.Equal(p.Exclude, append(slices.Clone(base.Exclude), "*.log", "build")) {
-					t.Errorf("excludes = %v", p.Exclude)
-				}
-			}},
 		{name: "a folder outside the home is left out with a note", file: `{"extraSkillDirs": ["/etc/skills", "relative/skills", "~/../other", "~", "~/.ok/skills"]}`,
 			check: func(t *testing.T, p Policy, notes []string) {
 				if !slices.Equal(p.AgentDirs, append(slices.Clone(base.AgentDirs), "~/.ok/skills")) {
@@ -72,6 +66,7 @@ func TestLoadPolicyMergesTheSettingsFile(t *testing.T) {
 		{name: "a skill count that is not a number is refused", file: `{"maxSkills": "many"}`, err: "maxSkills"},
 		{name: "a malformed file is refused", file: `{"excludes": `, err: "not a JSON object"},
 		{name: "a lines value of another shape is refused", file: `{"excludes": {"a": 1}}`, err: "excludes is not a list of lines"},
+		{name: "a lines value as one string is refused", file: `{"excludes": "*.log"}`, err: "excludes is not a list of lines"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

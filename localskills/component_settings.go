@@ -63,12 +63,7 @@ func ReadComponentSettings(path string) (ComponentSettings, error) {
 		}
 		var list []string
 		if err := json.Unmarshal(v, &list); err != nil {
-			// A lines value delivered as one newline-joined string reads alike.
-			var one string
-			if err := json.Unmarshal(v, &one); err != nil {
-				return fmt.Errorf("component settings file: %s is not a list of lines", key)
-			}
-			list = strings.Split(one, "\n")
+			return fmt.Errorf("component settings file: %s is not a list of lines", key)
 		}
 		for _, l := range list {
 			if l = strings.TrimSpace(l); l != "" {
