@@ -49,6 +49,27 @@ type Service struct {
 	loaded bool
 	// notes are what the last publish left out, for State.
 	notes []string
+	// candidates are the last FindCandidates answer, for what it was asked
+	// (candidatesKey) and when: the panel reads the state often, the
+	// folders of other tools change seldom.
+	candidates    []CandidateFolder
+	candidatesKey string
+	candidatesAt  time.Time
+}
+
+// candidatesEvery is how long a FindCandidates answer is reused for the same
+// sources and agent folders.
+const candidatesEvery = time.Minute
+
+func (s *Service) candidatesLocked(p Policy, sources []string) []CandidateFolder {
+	key := strings.Join(sources, "\x00") + "\x01" + strings.Join(p.AgentDirs, "\x00")
+	if key != s.candidatesKey || time.Since(s.candidatesAt) > candidatesEvery {
+		s.candidates, s.candidatesKey, s.candidatesAt = FindCandidates(p, sources, s.Home), key, time.Now()
+	}
+	if s.candidates == nil {
+		return []CandidateFolder{}
+	}
+	return s.candidates
 }
 
 // SourceState is one source folder as the skills panel shows it.
@@ -101,8 +122,11 @@ type State struct {
 	Sources   []SourceState `json:"sources"`
 	AgentDirs []string      `json:"agentDirs"`
 	// Suggested are folders worth adding that exist and are not added.
-	Suggested []string     `json:"suggested"`
-	Skills    []SkillState `json:"skills"`
+	Suggested []string `json:"suggested"`
+	// Candidates are other tools' skill folders, not yet known, the member
+	// may add to their extra agent skill folders (FindCandidates).
+	Candidates Candidates   `json:"candidates"`
+	Skills     []SkillState `json:"skills"`
 	// Notes say what the last publish left out and why.
 	Notes []string `json:"notes"`
 }
@@ -185,6 +209,7 @@ func (s *Service) stateLocked() (State, error) {
 	if st.Suggested == nil {
 		st.Suggested = []string{}
 	}
+	st.Candidates = Candidates{Setting: SettingExtraSkillDirs, Folders: s.candidatesLocked(policy, settings.Sources)}
 	return st, nil
 }
 

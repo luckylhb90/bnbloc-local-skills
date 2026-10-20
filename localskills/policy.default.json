@@ -31,6 +31,11 @@
     "\\*{3,}",
     "(?i)x{6,}"
   ],
+  "candidateRoots": [
+    { "path": "~", "hidden": true },
+    { "path": "~/.config" },
+    { "path": "~/Library/Application Support" }
+  ],
   "limits": {
     "files": 5000,
     "bytes": 268435456,
@@ -38,6 +43,8 @@
     "mirrorBytes": 2147483648,
     "scanDepth": 2,
     "scanEntries": 2000,
-    "secretScanBytes": 262144
+    "secretScanBytes": 262144,
+    "candidates": 20,
+    "candidateEntries": 200
   }
 }

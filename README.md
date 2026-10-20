@@ -38,6 +38,18 @@ page (Settings):
 | `secretPatterns` | lines | the organization | regular expressions (Go syntax) of text that marks a credential; one that does not compile stops the component with an error naming it, never ignored |
 | `maxSkills` | number | the organization | how many skills one sandbox takes at most (empty: the policy's limit) |
 
+**Folders other tools keep skills in.** The component's state offers
+`candidates`: folders under the home where another tool keeps skills (a
+folder whose sub-folders hold a SKILL.md, found among the home's hidden
+folders, `~/.config` and `~/Library/Application Support`, a few levels
+deep: `candidateRoots` and the `candidates`/`candidateEntries` limits of
+the policy), as paths under the home with a skill count and one skill's
+name, never a file's content, and none already a source or an agent
+folder. It names the setting they go into (`extraSkillDirs`): the panel
+lists them for the member to tick, and "Suggest folders with AI" asks
+bnbloc's `suggest-skill-dirs` assist which to add and why; the ticked ones
+are saved into that setting like a typed value.
+
 Each list is added after the shipped policy's, each entry once
 (`localskills.LoadPolicy`, one merge: `Policy.Merge`); nothing a setting says
 can remove a rule the component ships. The values reach the component through

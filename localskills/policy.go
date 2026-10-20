@@ -34,6 +34,10 @@ type Limits struct {
 	ScanEntries int `json:"scanEntries"`
 	// SecretScanBytes is how much of each file is read for credentials.
 	SecretScanBytes int64 `json:"secretScanBytes"`
+	// Candidates bounds the folders of other tools offered, CandidateEntries
+	// the entries read in one tool's folder (FindCandidates).
+	Candidates       int `json:"candidates"`
+	CandidateEntries int `json:"candidateEntries"`
 }
 
 // SecretRule is one pattern that marks a file as holding a credential.
@@ -62,7 +66,11 @@ type Policy struct {
 	// secret (a test fixture's "not-a-real-token", "<your key>", "xxxxxx"): a
 	// content rule whose every match is one of these does not stop a skill.
 	SecretPlaceholders []string `json:"secretPlaceholders"`
-	Limits             Limits   `json:"limits"`
+	// CandidateRoots are where other tools' folders are looked for skills
+	// the member may add (FindCandidates): the home's hidden folders, the
+	// configuration and application support folders.
+	CandidateRoots []CandidateRoot `json:"candidateRoots"`
+	Limits         Limits          `json:"limits"`
 }
 
 // DefaultPolicy is the embedded policy.
@@ -101,6 +109,12 @@ func (p Policy) Merge(o Policy) Policy {
 			out.SecretRules = append(out.SecretRules, r)
 		}
 	}
+	out.CandidateRoots = slices.Clone(p.CandidateRoots)
+	for _, r := range o.CandidateRoots {
+		if !slices.Contains(out.CandidateRoots, r) {
+			out.CandidateRoots = append(out.CandidateRoots, r)
+		}
+	}
 	l, ol := &out.Limits, o.Limits
 	if ol.Files > 0 {
 		l.Files = ol.Files
@@ -122,6 +136,12 @@ func (p Policy) Merge(o Policy) Policy {
 	}
 	if ol.SecretScanBytes > 0 {
 		l.SecretScanBytes = ol.SecretScanBytes
+	}
+	if ol.Candidates > 0 {
+		l.Candidates = ol.Candidates
+	}
+	if ol.CandidateEntries > 0 {
+		l.CandidateEntries = ol.CandidateEntries
 	}
 	return out
 }
