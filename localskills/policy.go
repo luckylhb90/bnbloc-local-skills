@@ -3,7 +3,8 @@
 // publish. It is the one owner of those rules and holds none of them in code:
 // the agent folders to look for links in, what is never copied, what looks like
 // a credential, what counts as a script and every limit are the Policy, a data
-// file (policy.default.json) a member's own policy file adds to or replaces.
+// file (policy.default.json) the component's declared settings add to
+// (component_settings.go).
 // The package knows nothing of any agent, of the sandbox or of the Library; the
 // component that applies it (cmd/bnbloc-local-skills) does.
 package localskills
@@ -12,7 +13,6 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
-	"os"
 	"regexp"
 	"slices"
 )
@@ -20,8 +20,8 @@ import (
 //go:embed policy.default.json
 var defaultPolicyJSON []byte
 
-// Limits are every number the package works to. A zero in an overriding policy
-// means "keep the base's".
+// Limits are every number the package works to. A zero in an overlay merged
+// onto the base means "keep the base's".
 type Limits struct {
 	// Files and Bytes bound one skill (the Library's import limits).
 	Files int   `json:"files"`
@@ -47,7 +47,7 @@ type Policy struct {
 	// AgentDirs are the folders agent CLIs read skills from; a skill is also
 	// reachable at an entry of one that links to it.
 	AgentDirs []string `json:"agentDirs"`
-	// SuggestedSources are folders the Settings view offers to add when they
+	// SuggestedSources are folders the skills panel offers to add when they
 	// exist: offered, never added for the member.
 	SuggestedSources []string `json:"suggestedSources"`
 	// Exclude are name patterns never copied (matched against each path part).
@@ -124,29 +124,6 @@ func (p Policy) Merge(o Policy) Policy {
 		l.SecretScanBytes = ol.SecretScanBytes
 	}
 	return out
-}
-
-// LoadPolicy is the default policy with the file's added (an empty path is
-// the default alone). A file that cannot be read or parsed is an error: a
-// member's policy is never silently ignored.
-func LoadPolicy(path string) (Policy, error) {
-	base := DefaultPolicy()
-	if path == "" {
-		return base, nil
-	}
-	raw, err := os.ReadFile(path)
-	if err != nil {
-		return Policy{}, fmt.Errorf("policy file: %w", err)
-	}
-	var o Policy
-	if err := json.Unmarshal(raw, &o); err != nil {
-		return Policy{}, fmt.Errorf("policy file %s: %w", path, err)
-	}
-	merged := base.Merge(o)
-	if _, err := compileRules(merged.SecretRules); err != nil {
-		return Policy{}, err
-	}
-	return merged, nil
 }
 
 type compiledRule struct {

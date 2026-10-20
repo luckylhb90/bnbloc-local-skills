@@ -132,8 +132,6 @@ func TestServiceValidate(t *testing.T) {
 	s, _ := newService(t)
 	bad := []Settings{
 		{Sources: []string{"relative/dir"}},
-		{AgentDirs: []string{""}},
-		{PolicyFile: "policy.json"},
 		{Skills: map[string]Choice{"../x": {}}},
 		{Skills: map[string]Choice{"": {}}},
 		{Sources: make([]string, maxSources+1)},

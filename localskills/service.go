@@ -13,7 +13,7 @@ import (
 	"github.com/luckylhb90/bnbloc/core"
 )
 
-// ProviderContract names the API a Settings view renders and a component
+// ProviderContract names the API the skills panel renders and a component
 // serves (api.go).
 const ProviderContract = "bnbloc.skills.provider/v1"
 
@@ -23,19 +23,21 @@ const MountsContract = "bnbloc.sandbox.mounts/v1"
 
 // Limits on what a settings update may carry.
 const (
-	maxSources   = 16
-	maxAgentDirs = 32
-	maxChoices   = 512
-	maxAllowed   = 32
+	maxSources = 16
+	maxChoices = 512
+	maxAllowed = 32
 )
 
 // Service is the component: it holds a member's settings, scans their sources,
 // keeps the mirror and the mount descriptor up to date, and packs a skill. It
 // runs on the member's machine as the member.
 type Service struct {
-	// Home is the member's home folder; SettingsFile where the settings live.
-	Home         string
-	SettingsFile string
+	// Home is the member's home folder; SettingsFile where the member's
+	// choices live; ComponentSettingsFile the declared settings' values the
+	// desktop writes at launch ("" = none: the shipped policy alone).
+	Home                  string
+	SettingsFile          string
+	ComponentSettingsFile string
 	// MountsFile is the descriptor the bridge reads ("" = no mounts are
 	// published); MirrorRoot the folder (under the workspaces root) holding the
 	// copies.
@@ -49,7 +51,7 @@ type Service struct {
 	notes []string
 }
 
-// SourceState is one source folder as the Settings view shows it.
+// SourceState is one source folder as the skills panel shows it.
 type SourceState struct {
 	Path      string `json:"path"`
 	Error     string `json:"error,omitempty"`
@@ -82,7 +84,7 @@ type SkillState struct {
 	Changed bool `json:"changed,omitempty"`
 }
 
-// FindingState is a flagged file as the Settings view shows it.
+// FindingState is a flagged file as the skills panel shows it.
 type FindingState struct {
 	File      string `json:"file"`
 	Hash      string `json:"hash"`
@@ -105,21 +107,16 @@ type State struct {
 	Notes []string `json:"notes"`
 }
 
-func (s *Service) policyLocked(settings Settings) (Policy, error) {
-	path := ""
-	if settings.PolicyFile != "" {
-		path = ExpandHome(settings.PolicyFile, s.Home)
-	}
-	return LoadPolicy(path)
-}
-
-func (s *Service) load() (Settings, Policy, error) {
+// load reads the member's choices and the policy (read again on every call,
+// so a changed setting applies without a restart), with the notes on what the
+// settings left out.
+func (s *Service) load() (Settings, Policy, []string, error) {
 	settings, err := LoadSettings(s.SettingsFile)
 	if err != nil {
-		return Settings{}, Policy{}, err
+		return Settings{}, Policy{}, nil, err
 	}
-	p, err := s.policyLocked(settings)
-	return settings, p, err
+	p, notes, err := LoadPolicy(s.ComponentSettingsFile, s.Home)
+	return settings, p, notes, err
 }
 
 // State reads the settings and every source.
@@ -130,7 +127,7 @@ func (s *Service) State() (State, error) {
 }
 
 func (s *Service) stateLocked() (State, error) {
-	settings, policy, err := s.load()
+	settings, policy, policyNotes, err := s.load()
 	if err != nil {
 		return State{}, err
 	}
@@ -141,13 +138,11 @@ func (s *Service) stateLocked() (State, error) {
 	if settings.Sources == nil {
 		settings.Sources = []string{}
 	}
-	if settings.AgentDirs == nil {
-		settings.AgentDirs = []string{}
-	}
 	if settings.Skills == nil {
 		settings.Skills = map[string]Choice{}
 	}
-	st := State{Contract: ProviderContract, Settings: settings, Enabled: settings.Enabled, AgentDirs: union(policy.AgentDirs, settings.AgentDirs), Notes: slicesOrEmpty(s.notes)}
+	st := State{Contract: ProviderContract, Settings: settings, Enabled: settings.Enabled, AgentDirs: policy.AgentDirs,
+		Notes: slicesOrEmpty(append(policyNotes, s.notes...))}
 	owner := map[string]string{}
 	for _, src := range settings.Sources {
 		path := ExpandHome(src, s.Home)
@@ -211,16 +206,13 @@ func containsPath(list []string, p string) bool {
 
 // Validate checks a settings update.
 func (s *Service) Validate(in Settings) error {
-	if len(in.Sources) > maxSources || len(in.AgentDirs) > maxAgentDirs || len(in.Skills) > maxChoices {
-		return fmt.Errorf("too many entries (at most %d sources, %d agent folders, %d choices)", maxSources, maxAgentDirs, maxChoices)
+	if len(in.Sources) > maxSources || len(in.Skills) > maxChoices {
+		return fmt.Errorf("too many entries (at most %d sources, %d choices)", maxSources, maxChoices)
 	}
-	for _, p := range append(append([]string{}, in.Sources...), in.AgentDirs...) {
+	for _, p := range in.Sources {
 		if p == "" || !(filepath.IsAbs(ExpandHome(p, s.Home))) {
 			return fmt.Errorf("%q is not an absolute folder", p)
 		}
-	}
-	if in.PolicyFile != "" && !filepath.IsAbs(ExpandHome(in.PolicyFile, s.Home)) {
-		return fmt.Errorf("the policy file %q is not an absolute path", in.PolicyFile)
 	}
 	for name, c := range in.Skills {
 		if len(c.Allowed) > maxAllowed {
@@ -248,9 +240,6 @@ func (s *Service) Apply(in Settings) (State, error) {
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if _, err := s.policyLocked(in); err != nil {
-		return State{}, err
-	}
 	if err := in.Save(s.SettingsFile); err != nil {
 		return State{}, err
 	}
@@ -275,7 +264,7 @@ type descriptorMount struct {
 }
 
 func (s *Service) publishLocked() error {
-	settings, policy, err := s.load()
+	settings, policy, _, err := s.load()
 	if err != nil {
 		return err
 	}
@@ -340,7 +329,7 @@ func writeJSONAtomic(path string, v any, mode os.FileMode) error {
 func (s *Service) Pack(name string) (archive []byte, hash string, err error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	settings, policy, err := s.load()
+	settings, policy, _, err := s.load()
 	if err != nil {
 		return nil, "", err
 	}

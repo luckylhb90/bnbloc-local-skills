@@ -68,7 +68,6 @@ func BuildPlan(in PlanInput) (Plan, error) {
 	if err := mirror.Prune(wanted); err != nil {
 		return plan, fmt.Errorf("local skills mirror: %w", err)
 	}
-	agentDirs := union(in.Policy.AgentDirs, in.Settings.AgentDirs)
 	var mirrored int64
 	count := 0
 	for _, name := range wanted {
@@ -100,7 +99,7 @@ func BuildPlan(in PlanInput) (Plan, error) {
 		}
 		count++
 		mirrored += sk.Bytes
-		for _, guest := range ReachPaths(sk, agentDirs, in.Home) {
+		for _, guest := range ReachPaths(sk, in.Policy.AgentDirs, in.Home) {
 			m := Mount{Host: mirror.Dir(name), Guest: guest}
 			if !slices.Contains(plan.Mounts, m) {
 				plan.Mounts = append(plan.Mounts, m)

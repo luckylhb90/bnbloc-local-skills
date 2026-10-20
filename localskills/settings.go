@@ -37,18 +37,16 @@ type Published struct {
 	Version     string `json:"version"`
 }
 
-// Settings are a member's, kept on their machine. The zero value is the
-// default: off, no source, nothing ticked.
+// Settings are a member's choices in the skills view, kept on their machine
+// (what adds to the policy is the component's declared settings,
+// component_settings.go). The zero value is the default: off, no source,
+// nothing ticked.
 type Settings struct {
 	Enabled bool `json:"enabled"`
 	// Sources are the folders of skill folders the member named.
 	Sources []string `json:"sources"`
-	// AgentDirs are agent skill folders the member adds to the policy's.
-	AgentDirs []string `json:"agentDirs"`
 	// Skills are the choices, by skill name.
 	Skills map[string]Choice `json:"skills"`
-	// PolicyFile is a member's policy added to the default (optional).
-	PolicyFile string `json:"policyFile,omitempty"`
 }
 
 // LoadSettings reads the settings file; a file that does not exist is the

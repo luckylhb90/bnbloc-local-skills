@@ -47,38 +47,6 @@ func TestDefaultPolicyIsData(t *testing.T) {
 	}
 }
 
-func TestPolicyFileAddsToTheDefault(t *testing.T) {
-	file := filepath.Join(t.TempDir(), "policy.json")
-	write(t, file, `{"agentDirs":["~/.mycli/skills","~/.claude/skills"],"exclude":["build"],"secretRules":[{"name":"a house token","pattern":"HOUSE-[0-9]{6}"}],"limits":{"files":10}}`, 0o600)
-	p, err := LoadPolicy(file)
-	if err != nil {
-		t.Fatal(err)
-	}
-	base := DefaultPolicy()
-	if !slices.Contains(p.AgentDirs, "~/.mycli/skills") || !slices.Contains(p.AgentDirs, "~/.agents/skills") {
-		t.Errorf("agent folders are the default's plus the member's: %v", p.AgentDirs)
-	}
-	if len(p.AgentDirs) != len(base.AgentDirs)+1 {
-		t.Errorf("a folder in both lists is once: %v", p.AgentDirs)
-	}
-	if !slices.Contains(p.Exclude, "build") || !slices.Contains(p.Exclude, ".git") {
-		t.Errorf("excludes add: %v", p.Exclude)
-	}
-	if p.Limits.Files != 10 || p.Limits.Bytes != base.Limits.Bytes {
-		t.Errorf("a non-zero limit replaces, a zero keeps: %+v", p.Limits)
-	}
-	if len(p.SecretRules) != len(base.SecretRules)+1 {
-		t.Errorf("a rule adds: %d", len(p.SecretRules))
-	}
-	write(t, file, `{"secretRules":[{"name":"bad","pattern":"("}]}`, 0o600)
-	if _, err := LoadPolicy(file); err == nil {
-		t.Error("a rule that does not compile is refused, not ignored")
-	}
-	if _, err := LoadPolicy(filepath.Join(t.TempDir(), "missing.json")); err == nil {
-		t.Error("a policy file that is named but missing is an error")
-	}
-}
-
 func TestInspectSaysWhyASkillCannotBeUsed(t *testing.T) {
 	src := t.TempDir()
 	sc := scanner(t)

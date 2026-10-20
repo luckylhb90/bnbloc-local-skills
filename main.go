@@ -6,8 +6,8 @@
 // It runs on the member's desktop as a plugin sidecar with two capabilities:
 //
 //	skills-provider  serves bnbloc.skills.provider/v1 on loopback behind a
-//	                 per-launch bearer; the desktop's Settings → Skills view
-//	                 renders it.
+//	                 per-launch bearer; the skills panel (the component's
+//	                 card on the Components page: Open) renders it.
 //	sandbox-mounts   keeps a read-only mirror of the ticked skills and the
 //	                 bnbloc.sandbox.mounts/v1 descriptor the bridge reads before
 //	                 every sandboxed turn.
@@ -20,6 +20,10 @@
 //	BNBLOC_LOCAL_SKILLS_MOUNTS_FILE  where the mount descriptor is written
 //	BNBLOC_LOCAL_SKILLS_MOUNT_ROOT   folder (under the workspaces root) for the copies
 //	BNBLOC_LOCAL_SKILLS_SUPERVISED   set when the desktop owns stdin (exit on EOF)
+//
+// and the platform's own: BNBLOC_COMPONENT_SETTINGS_FILE, the values of the
+// settings package.json declares (extra agent folders, excludes, the
+// organization's secret rules), merged onto the shipped policy.
 package main
 
 import (
@@ -47,6 +51,9 @@ const (
 	envMounts     = "BNBLOC_LOCAL_SKILLS_MOUNTS_FILE"
 	envMountRoot  = "BNBLOC_LOCAL_SKILLS_MOUNT_ROOT"
 	envSupervised = "BNBLOC_LOCAL_SKILLS_SUPERVISED"
+	// envSettingsFile is the platform's component settings file
+	// (docs/prd/2026-10-19-component-settings.md in bnbloc).
+	envSettingsFile = "BNBLOC_COMPONENT_SETTINGS_FILE"
 
 	// publishEvery is how often the mirror catches up with edits to a skill.
 	publishEvery = 10 * time.Second
@@ -77,10 +84,11 @@ func run() error {
 		return err
 	}
 	svc := &localskills.Service{
-		Home:         home,
-		SettingsFile: filepath.Join(dataDir, settingsName),
-		MountsFile:   os.Getenv(envMounts),
-		MirrorRoot:   os.Getenv(envMountRoot),
+		Home:                  home,
+		SettingsFile:          filepath.Join(dataDir, settingsName),
+		ComponentSettingsFile: os.Getenv(envSettingsFile),
+		MountsFile:            os.Getenv(envMounts),
+		MirrorRoot:            os.Getenv(envMountRoot),
 	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)

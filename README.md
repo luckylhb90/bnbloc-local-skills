@@ -4,16 +4,41 @@
 
 An installable plugin sidecar (`bnbloc.plugin.package/v1`, capabilities
 `skills-provider` and `sandbox-mounts`). The member chooses, skill by skill
-in Settings → Skills, which skill folders on their computer reach their
-agents' sandbox and which are added to their library. Off, and empty, until
-they turn it on. macOS desktops only for now: the sandbox's guest backend is
-macOS-only.
+on the Components page (the component's card: Open), which skill folders on
+their computer reach their agents' sandbox and which are added to their
+library. Off, and empty, until they turn it on. macOS desktops only for now:
+the sandbox's guest backend is macOS-only.
 
-It speaks two contracts: `bnbloc.skills.provider/v1` (what Settings renders,
-over loopback with a per-launch bearer) and `bnbloc.sandbox.mounts/v1` (the
+It speaks two contracts: `bnbloc.skills.provider/v1` (the skills panel bnbloc
+renders, over loopback with a per-launch bearer) and `bnbloc.sandbox.mounts/v1` (the
 descriptor the bridge reads before a sandboxed turn; the types are bnbloc's
 public `component` package). Design:
 [local skills](https://github.com/luckylhb90/bnbloc/blob/main/docs/architecture/local-skills.md).
+
+## Settings
+
+What the component works to is its shipped policy
+(`localskills/policy.default.json`: the agent folders it knows, what is never
+copied, what marks a credential, its limits). The settings `package.json`
+declares add to it, and are set on the component's card on the Components
+page (Settings):
+
+| Setting | Type | Set by | Does |
+|---|---|---|---|
+| `extraSkillDirs` | lines | each member | extra agent skill folders under the member's home (`~/.mytool/skills`); a skill linked from one is also placed there in the sandbox. A line that is not a folder under the home is left out, and the skills panel says so. |
+| `excludes` | lines | each member | name patterns never copied into the sandbox or the library (`*.log`) |
+| `secretNames` | lines | the organization | file name patterns that hold credentials (`*.secret`): a skill holding one is never shared |
+| `secretPatterns` | lines | the organization | regular expressions (Go syntax) of text that marks a credential; one that does not compile stops the component with an error naming it, never ignored |
+| `maxSkills` | number | the organization | how many skills one sandbox takes at most (empty: the policy's limit) |
+
+Each list is added after the shipped policy's, each entry once
+(`localskills.LoadPolicy`, one merge: `Policy.Merge`); nothing a setting says
+can remove a rule the component ships. The values reach the component through
+the file bnbloc names in `BNBLOC_COMPONENT_SETTINGS_FILE` (an owner-only JSON
+object by key: a `lines` setting is an array of strings, a number its decimal
+text, an unset setting absent). It is read again on every call, so a changed
+value applies without a restart. Without the variable the shipped policy
+applies alone; a named file that cannot be read or parsed is an error.
 
 ## Install into bnbloc
 

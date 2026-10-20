@@ -2,7 +2,7 @@
   "kind": "bnbloc.plugin.package/v1",
   "contract": "bnbloc.plugin.contract/v1",
   "name": "local-skills",
-  "version": "0.1.6",
+  "version": "0.2.0",
   "publisher": "bnbloc",
   "description": "Choose which skill folders on your computer reach your agents' sandbox and your library. Nothing is shared until you turn it on.",
   "runtime": "sidecar",
@@ -15,5 +15,42 @@
     "dataDirEnv": "BNBLOC_LOCAL_SKILLS_DATA_DIR",
     "mountsEnv": "BNBLOC_LOCAL_SKILLS_MOUNTS_FILE",
     "mountRootEnv": "BNBLOC_LOCAL_SKILLS_MOUNT_ROOT"
-  }
+  },
+  "settings": [
+    {
+      "key": "extraSkillDirs",
+      "label": "Extra agent skill folders",
+      "type": "lines",
+      "scope": "member",
+      "help": "Folders under your home where another agent CLI reads skills, one per line (such as ~/.mytool/skills). A skill linked from one is placed there in your sandbox too."
+    },
+    {
+      "key": "excludes",
+      "label": "Never copy",
+      "type": "lines",
+      "scope": "member",
+      "help": "Name patterns never copied into your sandbox or library, one per line (such as *.log), added to the component's own."
+    },
+    {
+      "key": "secretNames",
+      "label": "Secret file names",
+      "type": "lines",
+      "scope": "org",
+      "help": "Name patterns of files that hold credentials, one per line (such as *.secret); a skill holding one is never shared. Added to the component's own."
+    },
+    {
+      "key": "secretPatterns",
+      "label": "Secret patterns",
+      "type": "lines",
+      "scope": "org",
+      "help": "Regular expressions (Go syntax) of text that marks a credential, one per line; added to the component's own."
+    },
+    {
+      "key": "maxSkills",
+      "label": "Skills in a sandbox",
+      "type": "number",
+      "scope": "org",
+      "help": "How many skills one member's sandbox takes at most. Empty keeps the component's own limit."
+    }
+  ]
 }
